@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deadline Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f11;
+      --surface: #1a1a1f;
+      --border: #2a2a32;
+      --accent: #e8ff47;
+      --text: #f0f0f0;
+      --muted: #888;
+      --urgent: #ff6b6b;
+      --soon: #ffb347;
+      --ok: #7CFC6A;
+      --done: #666;
+      --radius: 10px;
+    }
+    body {
+      width: 430px;
+      min-height: 200px;
+      max-height: 560px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+    .header .count {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .event-list {
+      overflow-y: auto;
+      max-height: 320px;
+      padding: 6px 0;
+    }
+    .event-list::-webkit-scrollbar { width: 4px; }
+    .event-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+    .event-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+      position: relative;
+    }
+    .event-row:hover { background: var(--surface); }
+    .event-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .urgent .event-dot { background: var(--urgent); box-shadow: 0 0 6px var(--urgent); }
+    .soon .event-dot { background: var(--soon); box-shadow: 0 0 6px var(--soon); }
+    .ok .event-dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+    .overdue .event-dot, .done .event-dot { background: var(--done); }
+    .event-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .event-name {
+      font-weight: 500;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .event-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .overdue .event-name, .done .event-name {
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+    .event-days {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      min-width: 88px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .urgent .event-days { color: var(--urgent); }
+    .soon .event-days { color: var(--soon); }
+    .ok .event-days { color: var(--ok); }
+    .overdue .event-days, .done .event-days { color: var(--done); }
+    .event-date {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      min-width: 44px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .event-actions {
+      display: flex;
+      gap: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .event-row:hover .event-actions,
+    .event-row:focus-within .event-actions { opacity: 1; }
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 14px;
+      line-height: 1;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-icon:hover { color: var(--text); background: var(--border); }
+    .btn-icon.active { color: var(--accent); }
+    .reminder-badge {
+      font-size: 10px;
+      color: var(--accent);
+      opacity: 0.7;
+    }
+    .empty {
+      text-align: center;
+      padding: 36px 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+    .empty .big { font-size: 28px; margin-bottom: 8px; }
+    .add-bar {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .add-toggle {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      padding: 8px 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .add-toggle:hover { border-color: var(--accent); color: var(--text); }
+    .add-form { display: none; flex-direction: column; gap: 8px; }
+    .add-form.open { display: flex; }
+    .form-row { display: flex; gap: 8px; }
+    input[type="text"], input[type="date"], input[type="time"], select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      padding: 8px 10px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.15s;
+      color-scheme: dark;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    .btn-add {
+      background: var(--accent);
+      border: none;
+      border-radius: 7px;
+      color: #0f0f11;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .btn-add:hover { opacity: 0.85; }
+    .btn-cancel {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-cancel:hover { border-color: var(--text); color: var(--text); }
+    .label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 10;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      width: 300px;
+    }
+    .modal h2 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+    .modal p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .reminder-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .reminder-opt {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .reminder-opt:hover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+    .reminder-opt.selected { border-color: var(--accent); background: rgba(232,255,71,0.08); }
+    .reminder-opt input { display: none; }
+    .opt-label { font-size: 12px; font-weight: 500; }
+    .opt-sub { font-size: 10px; color: var(--muted); margin-left: auto; }
+    .modal-btns {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Deadlines</h1>
+    <span class="count" id="header-count"></span>
+  </div>
+
+  <div id="event-list" class="event-list"></div>
+
+  <div class="add-bar">
+    <button class="add-toggle" id="add-toggle-btn">Add deadline</button>
+    <div class="add-form" id="add-form">
+      <div>
+        <div class="label">Event name</div>
+        <input type="text" id="input-name" placeholder="e.g. Submit project report" maxlength="100" />
+      </div>
+      <div class="form-row">
+        <div style="flex:1;">
+          <div class="label">Deadline</div>
+          <input type="date" id="input-date" />
+        </div>
+        <div style="width:120px;">
+          <div class="label">Time</div>
+          <input type="time" id="input-time" />
+        </div>
+      </div>
+      <div class="form-row">
+        <button class="btn-cancel" id="cancel-btn">Cancel</button>
+        <button class="btn-add" id="save-btn">Add Event</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <h2>Set Reminder</h2>
+      <p id="modal-event-name">Choose how often to remind you</p>
+      <div class="reminder-options" id="reminder-options">
+        <label class="reminder-opt" data-value="none"><input type="radio" name="reminder" value="none"><span class="opt-label">No reminder</span><span class="opt-sub">Off</span></label>
+        <label class="reminder-opt" data-value="daily"><input type="radio" name="reminder" value="daily"><span class="opt-label">Daily</span><span class="opt-sub">Every day at 9am</span></label>
+        <label class="reminder-opt" data-value="every2days"><input type="radio" name="reminder" value="every2days"><span class="opt-label">Every 2 days</span><span class="opt-sub">Every other day, 9am</span></label>
+        <label class="reminder-opt" data-value="3xweek"><input type="radio" name="reminder" value="3xweek"><span class="opt-label">3 per week</span><span class="opt-sub">Mon, Wed, Fri</span></label>
+        <label class="reminder-opt" data-value="weekly"><input type="radio" name="reminder" value="weekly"><span class="opt-label">Weekly</span><span class="opt-sub">Once a week, 9am</span></label>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-add" id="modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
