@@ -27,10 +27,6 @@ A simple Chrome extension to track deadlines in a compact popup.
 4. Click **Load unpacked**
 5. Select this project folder
 
-## Notes
 
-This extension is currently shared as an unpacked Chrome extension for free use.
 
-## License
 
-Personal use / learning project
